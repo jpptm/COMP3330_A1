@@ -1,20 +1,6 @@
 import torch
 
 
-class SpiralNet(torch.nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.fc1 = torch.nn.Linear(2, 8)
-        self.fc2 = torch.nn.Linear(8, 2)
-        self.relu = torch.nn.Tanh()
-
-    def forward(self, x):
-        x = self.fc1(x)
-        x = self.relu(x)
-        x = self.fc2(x)
-        return x
-
-
 class ANN(torch.nn.Module):
     def __init__(self, input_size, hidden_size, output_size, activation):
         super(ANN, self).__init__()
@@ -27,6 +13,7 @@ class ANN(torch.nn.Module):
             self.layers.append(activation)
 
         self.layers.append(torch.nn.Linear(hidden_size[-1], output_size))
+        self.layers.append(torch.nn.Softmax(dim=1))
 
         self.network = torch.nn.Sequential(*self.layers)
 
