@@ -103,6 +103,7 @@ def main(
     hidden_size,
     output_layers,
     activation,
+    criterion,
 ):
     # Set device - GPU if available, else CPU
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -110,6 +111,10 @@ def main(
 
     # Create dataset
     dataset = SpiralDataset(data_path)
+
+    # Show dataset
+    # plt.scatter(dataset.data[:, 0], dataset.data[:, 1])
+    # plt.show()
 
     # Split dataset into train and validation sets
     train_dataset, val_dataset = train_test_split(
@@ -129,7 +134,6 @@ def main(
     ).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    criterion = torch.nn.CrossEntropyLoss()
 
     # History logging
     train_losses, train_accs = [], []
@@ -181,10 +185,9 @@ def main(
 
 
 # Function for visualising model
-def visualize_spiral(model, extents):
+def visualize_spiral(model, extents, num_points):
     # Generate your meshgrid
     x_min, x_max, y_min, y_max = extents
-    num_points = 1000
     x, y = np.meshgrid(
         np.linspace(x_min, x_max, num_points), np.linspace(y_min, y_max, num_points)
     )
@@ -213,14 +216,15 @@ if __name__ == "__main__":
     # Create input map and then unpack to call main
     i_args = {
         "data_path": "dataset/spiralsdataset.csv",
-        "lr": 0.001,
-        "num_epochs": 1000,
-        "batch_size": 16,
+        "lr": 0.01,
+        "num_epochs": 10000,
+        "batch_size": 10,
         "input_layers": 2,
-        "hidden_layers": 4,
-        "hidden_size": 8,
+        "hidden_layers": 2,
+        "hidden_size": 64,
         "output_layers": 2,
         "activation": torch.nn.Tanh(),
+        "criterion": torch.nn.CrossEntropyLoss(),
     }
     main(**i_args)
 
@@ -237,4 +241,4 @@ if __name__ == "__main__":
         )
         model.load_state_dict(torch.load("spiral_model.pt"))
 
-        visualize_spiral(model, [-10, 10, -10, 10])
+        visualize_spiral(model, extents=[-10, 10, -10, 10], num_points=1000)
