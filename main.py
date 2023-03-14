@@ -1,30 +1,15 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import torch
 
 from sklearn.model_selection import train_test_split
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 
+from dataset.spiral_ds_loader import SpiralDataset
 from networks.ann import ANN
 
 # TODO Get test set, implement cross validation
 # TODO implement precision, recall, f1 score
-
-# Add csv loaderclass
-class SpiralDataset(Dataset):
-    def __init__(self, csv_file):
-        self.data = pd.read_csv(csv_file, header=None).values
-        self.x = torch.tensor(self.data[:, :2], dtype=torch.float32)
-        self.y = torch.tensor(self.data[:, 2], dtype=torch.int64)
-
-    def __len__(self):
-        return len(self.data)
-
-    # Fill this member so we can get data by index
-    def __getitem__(self, idx):
-        return self.x[idx], self.y[idx]
-
 
 # Add training function
 def train(model, train_loader, criterion, optimizer, device):
@@ -140,7 +125,7 @@ def main(
     val_losses, val_accs = [], []
 
     # Train model
-    # best_acc = 0
+    best_acc = 0
     for epoch in range(1, num_epochs + 1):
         train_loss, train_acc = train(model, train_loader, criterion, optimizer, device)
         val_loss, val_acc = validate(model, val_loader, criterion, device)
@@ -158,8 +143,8 @@ def main(
         val_accs.append(val_acc)
 
         # Save best model
-        # if val_acc > best_acc:
-        #    best_acc = val_acc
+        if val_acc > best_acc:
+            best_acc = val_acc
     torch.save(model.state_dict(), "spiral_model.pt")
 
     print("Training finished!")
@@ -206,6 +191,7 @@ def visualize_spiral(model, extents, num_points):
     )
 
     labels = np.argmax(predictions[..., :2], axis=2)
+    print(labels)
     plt.scatter(grid[:, 0], grid[:, 1], s=1, c=labels.ravel(), cmap="coolwarm")
 
     plt.show()
@@ -217,10 +203,10 @@ if __name__ == "__main__":
     i_args = {
         "data_path": "dataset/spiralsdataset.csv",
         "lr": 0.01,
-        "num_epochs": 10000,
+        "num_epochs": 1,
         "batch_size": 10,
         "input_layers": 2,
-        "hidden_layers": 2,
+        "hidden_layers": 1,
         "hidden_size": 64,
         "output_layers": 2,
         "activation": torch.nn.Tanh(),
