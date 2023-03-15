@@ -8,8 +8,9 @@ from torch.utils.data import DataLoader
 from dataset.spiral_ds_loader import SpiralDataset
 from networks.ann import ANN
 
-# TODO Get test set, implement cross validation
-# TODO implement precision, recall, f1 score
+
+# This script is here to mainly show what happens to the loss and accuracy plots when we only iterate through the training set once
+# instead of training by mini batches
 
 
 def main(
@@ -80,13 +81,26 @@ def main(
         train_losses.append(loss.item())
         train_accs.append(train_acc)
 
+        # Calculate validation
+        with torch.no_grad():
+            y_pred = model(x_val)
+            loss_val = criterion(y_pred, y_val)
+            val_acc = torch.sum(torch.argmax(y_pred, dim=1) == y_val) / y_val.shape[0]
+            val_losses.append(loss_val.item())
+            val_accs.append(val_acc)
+
         if epoch % 10 == 0:
-            # Print to console
+            # Print to training and validation metrics to console
             print(
-                "Epoch {}:\tTrain loss={:.4f}  \tTrain acc={:.2f}".format(
-                    epoch, loss.item(), train_acc * 100
+                "Epoch {}:\tTrain loss={:.4f}  \tTrain acc={:.2f} \tVal loss={:.4f} \tVal acc={:.2f}".format(
+                    epoch, loss.item(), train_acc * 100, loss_val.item(), val_acc * 100
                 )
             )
+            # print(
+            #     "Epoch {}:\tTrain loss={:.4f}  \tTrain acc={:.2f}".format(
+            #         epoch, loss.item(), train_acc * 100
+            #     )
+            # )
 
     torch.save(model.state_dict(), "spiral_model.pt")
 
