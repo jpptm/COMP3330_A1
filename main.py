@@ -3,6 +3,13 @@ import numpy as np
 import torch
 
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import (
+    accuracy_score,
+    confusion_matrix,
+    precision_score,
+    recall_score,
+)
+
 from torch.utils.data import DataLoader
 
 from dataset.spiral_ds_loader import SpiralDataset
@@ -12,7 +19,7 @@ from networks.ann import ANN
 # TODO implement precision, recall, f1 score
 
 # Add training function
-def train(model, train_loader, criterion, optimizer, device):
+def train(model, train_loader, criterion, optimiser, device):
     # Let model know we are in training mode
     model.train()
 
@@ -26,15 +33,15 @@ def train(model, train_loader, criterion, optimizer, device):
         inputs, targets = inputs.to(device), targets.to(device)
 
         # Reset gradients
-        optimizer.zero_grad()
+        optimiser.zero_grad()
 
         # Get model outputs and calculate loss
         outputs = model(inputs)
         loss = criterion(outputs, targets)
 
-        # Backpropagate and update optimizer learning rate
+        # Backpropagate and update optimiser learning rate
         loss.backward()
-        optimizer.step()
+        optimiser.step()
 
         # Keep track of loss and accuracy
         train_loss += loss.item()
@@ -78,6 +85,25 @@ def validate(model, val_loader, criterion, device):
     return avg_loss, acc
 
 
+# Compute final prediction for test set
+def test(model, x_test, y_test):
+    y_test = y_test.to("cpu")
+
+    with torch.no_grad():
+        y_pred_probs_test = model(x_test).cpu().numpy()
+
+    # Convert prediction probabilities to classes with cutoff 0.5
+    y_pred_classes_test = np.argmax(y_pred_probs_test, axis=1)
+    confusion_mat = confusion_matrix(y_test, y_pred_classes_test)
+
+    # Get accuracy, precision and recall
+    acc = accuracy_score(y_test, y_pred_classes_test)
+    precision = precision_score(y_test, y_pred_classes_test)
+    recall = recall_score(y_test, y_pred_classes_test)
+
+    return confusion_mat, acc, precision, recall
+
+
 def main(
     data_path,
     lr,
@@ -101,16 +127,24 @@ def main(
     # plt.scatter(dataset.data[:, 0], dataset.data[:, 1])
     # plt.show()
 
-    # Split dataset into train and validation sets
+    # Split dataset into train, validation, and test sets
     train_dataset, val_dataset = train_test_split(
-        dataset, test_size=0.3, random_state=42
+        dataset, test_size=0.3, random_state=42, shuffle=True
+    )
+
+    val_dataset, test_dataset = train_test_split(
+        val_dataset, test_size=0.5, random_state=42, shuffle=False
+    )
+
+    test_dataset = torch.tensor(
+        [[x[0], x[1], _] for x, _ in test_dataset], dtype=torch.float32, device=device
     )
 
     # Create data loaders
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
-    # Create model, optimizer, and loss function
+    # Create model, optimiser, and loss function
     model = ANN(
         input_layers,
         np.array(hidden_size * np.ones(hidden_layers), dtype=np.int32),
@@ -118,7 +152,7 @@ def main(
         activation,
     ).to(device)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    optimiser = torch.optim.Adam(model.parameters(), lr=lr)
 
     # History logging
     train_losses, train_accs = [], []
@@ -127,7 +161,7 @@ def main(
     # Train model
     best_acc = 0
     for epoch in range(1, num_epochs + 1):
-        train_loss, train_acc = train(model, train_loader, criterion, optimizer, device)
+        train_loss, train_acc = train(model, train_loader, criterion, optimiser, device)
         val_loss, val_acc = validate(model, val_loader, criterion, device)
 
         if epoch % 100 == 0:
@@ -145,9 +179,20 @@ def main(
         # Save best model
         if val_acc > best_acc:
             best_acc = val_acc
+
     torch.save(model.state_dict(), "spiral_model.pt")
 
-    print("Training finished!")
+    print("\nTraining finished!\n")
+
+    # Print confusion matrix, accuracy, precision and recall
+    confusion_mat, acc, precision, recall = test(
+        model, test_dataset[..., :2], test_dataset[..., 2]
+    )
+
+    print(f"Confusion matrix: \n{confusion_mat}\n")
+    print(
+        f"Accuracy: {acc*100:.4f}% \tPrecision: {precision:.4f} \tRecall: {recall:.4f}"
+    )
 
     # Plot training and validation history
     plt.figure()
@@ -191,9 +236,9 @@ def visualize_spiral(model, extents, num_points):
     )
 
     labels = np.argmax(predictions[..., :2], axis=2)
-    print(labels)
-    plt.scatter(grid[:, 0], grid[:, 1], s=1, c=labels.ravel(), cmap="coolwarm")
 
+    plt.title("Pixel map")
+    plt.scatter(grid[:, 0], grid[:, 1], s=1, c=labels.ravel(), cmap="coolwarm")
     plt.show()
 
 
@@ -203,7 +248,7 @@ if __name__ == "__main__":
     i_args = {
         "data_path": "dataset/spiralsdataset.csv",
         "lr": 0.01,
-        "num_epochs": 1,
+        "num_epochs": 1000,
         "batch_size": 10,
         "input_layers": 2,
         "hidden_layers": 1,

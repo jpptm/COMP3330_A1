@@ -3,7 +3,13 @@ import numpy as np
 import torch
 
 from sklearn.model_selection import train_test_split
-from torch.utils.data import DataLoader
+from sklearn.metrics import (
+    accuracy_score,
+    confusion_matrix,
+    precision_score,
+    recall_score,
+)
+
 
 from dataset.spiral_ds_loader import SpiralDataset
 from networks.ann import ANN
@@ -11,6 +17,22 @@ from networks.ann import ANN
 
 # This script is here to mainly show what happens to the loss and accuracy plots when we only iterate through the training set once
 # instead of training by mini batches
+# Compute final prediction for test set
+def test(model, x_test, y_test):
+
+    with torch.no_grad():
+        y_pred_probs_test = model(x_test).cpu().numpy()
+
+    # Convert prediction probabilities to classes with cutoff 0.5
+    y_pred_classes_test = np.argmax(y_pred_probs_test, axis=1)
+    confusion_mat = confusion_matrix(y_test, y_pred_classes_test)
+
+    # Get accuracy, precision and recall
+    acc = accuracy_score(y_test, y_pred_classes_test)
+    precision = precision_score(y_test, y_pred_classes_test)
+    recall = recall_score(y_test, y_pred_classes_test)
+
+    return confusion_mat, acc, precision, recall
 
 
 def main(
@@ -96,15 +118,18 @@ def main(
                     epoch, loss.item(), train_acc * 100, loss_val.item(), val_acc * 100
                 )
             )
-            # print(
-            #     "Epoch {}:\tTrain loss={:.4f}  \tTrain acc={:.2f}".format(
-            #         epoch, loss.item(), train_acc * 100
-            #     )
-            # )
 
     torch.save(model.state_dict(), "spiral_model.pt")
 
-    print("Training finished!")
+    print("\nTraining finished!\n")
+
+    # Print confusion matrix, accuracy, precision and recall
+    confusion_mat, acc, precision, recall = test(model, x_test, y_test)
+
+    print(f"Confusion matrix: \n{confusion_mat}\n")
+    print(
+        f"Accuracy: {acc*100:.4f}% \tPrecision: {precision:.4f} \tRecall: {recall:.4f}"
+    )
 
     # Plot training and validation history
     plt.figure()
