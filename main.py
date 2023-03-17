@@ -111,7 +111,6 @@ def main(
     batch_size,
     input_layers,
     hidden_layers,
-    hidden_size,
     output_layers,
     activation,
     criterion,
@@ -147,7 +146,7 @@ def main(
     # Create model, optimiser, and loss function
     model = ANN(
         input_layers,
-        np.array(hidden_size * np.ones(hidden_layers), dtype=np.int32),
+        hidden_layers,
         output_layers,
         activation,
     ).to(device)
@@ -221,6 +220,8 @@ def visualize_spiral(model, extents, num_points):
     x, y = np.meshgrid(
         np.linspace(x_min, x_max, num_points), np.linspace(y_min, y_max, num_points)
     )
+
+    # Parse grid to input that the model can process
     grid = np.stack((x.ravel(), y.ravel()), axis=1)
 
     # Generate your predictions
@@ -251,8 +252,7 @@ if __name__ == "__main__":
         "num_epochs": 1000,
         "batch_size": 10,
         "input_layers": 2,
-        "hidden_layers": 1,
-        "hidden_size": 64,
+        "hidden_layers": [69, 42],
         "output_layers": 2,
         "activation": torch.nn.Tanh(),
         "criterion": torch.nn.CrossEntropyLoss(),
@@ -264,9 +264,7 @@ if __name__ == "__main__":
     if visualise:
         model = ANN(
             i_args["input_layers"],
-            np.array(
-                i_args["hidden_size"] * np.ones(i_args["hidden_layers"]), dtype=np.int32
-            ),
+            i_args["hidden_layers"],
             i_args["output_layers"],
             i_args["activation"],
         )
