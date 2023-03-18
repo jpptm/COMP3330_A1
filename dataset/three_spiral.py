@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 # Constructing neural networks for multiclass-discretization based on information entropy
 # July 1999IEEE transactions on systems, man, and cybernetics. Part B, Cybernetics:
 # a publication of the IEEE Systems, Man, and Cybernetics Society 29(3):445 - 453, page 451
+# This function could be generalised to K spirals by letting theta = 2kpi / K where k = K - 1
 
 
 def spiral(alpha=0.8, noise_scale=0.1, num_points=1000, show=False):
