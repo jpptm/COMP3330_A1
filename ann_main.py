@@ -16,9 +16,6 @@ from torch.utils.data import DataLoader
 from dataset.spiral_ds_loader import SpiralDataset
 from networks.ann import ANN
 
-# TODO Get test set, implement cross validation
-# TODO implement precision, recall, f1 score
-
 # Add training function
 def train(model, train_loader, criterion, optimiser, device):
     # Let model know we are in training mode
