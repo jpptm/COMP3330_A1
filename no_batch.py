@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import time
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import (
@@ -19,6 +20,7 @@ from networks.ann import ANN
 # instead of training by mini batches
 # Compute final prediction for test set
 def test(model, x_test, y_test):
+    y_test = y_test.to("cpu")
 
     with torch.no_grad():
         y_pred_probs_test = model(x_test).cpu().numpy()
@@ -29,10 +31,74 @@ def test(model, x_test, y_test):
 
     # Get accuracy, precision and recall
     acc = accuracy_score(y_test, y_pred_classes_test)
-    precision = precision_score(y_test, y_pred_classes_test)
-    recall = recall_score(y_test, y_pred_classes_test)
 
-    return confusion_mat, acc, precision, recall
+    precision_global = precision_score(y_test, y_pred_classes_test, average="micro")
+    precision_mean = precision_score(y_test, y_pred_classes_test, average="macro")
+
+    recall_global = recall_score(y_test, y_pred_classes_test, average="micro")
+    recall_mean = recall_score(y_test, y_pred_classes_test, average="macro")
+
+    out_map = {
+        "conf_mat": confusion_mat,
+        "acc": acc,
+        "precision_global": precision_global,
+        "precision_mean": precision_mean,
+        "recall_global": recall_global,
+        "recall_mean": recall_mean,
+    }
+
+    return out_map
+
+
+# Function for visualising model
+def visualise_results(model, logs, extents, num_points):
+    # Generate your meshgrid
+    x_min, x_max, y_min, y_max = extents
+    x, y = np.meshgrid(
+        np.linspace(x_min, x_max, num_points), np.linspace(y_min, y_max, num_points)
+    )
+
+    # Parse grid to input that the model can process
+    grid = np.stack((x.ravel(), y.ravel()), axis=1)
+
+    # Generate your predictions
+    with torch.no_grad():
+        # Make sure everything is on CPU
+        model = model.to("cpu")
+        model.eval()
+        inputs = torch.tensor(grid, dtype=torch.float32)
+        predictions = model(inputs).numpy()
+        predictions = np.reshape(predictions, (num_points, num_points, 2))
+
+    predictions = np.stack(
+        (predictions[..., 0], predictions[..., 1], np.zeros(predictions[..., 0].shape)),
+        axis=-1,
+    )
+
+    labels = np.argmax(predictions[..., :2], axis=2)
+
+    # Plot training and validation history
+    plt.figure()
+    plt.title("Training vs Validation History")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.plot(logs["train_loss"], "r")
+    plt.plot(logs["val_loss"], "g")
+    plt.legend(["Train loss", "Validation loss"])
+
+    plt.figure()
+    plt.title("Training vs Validation History")
+    plt.xlabel("Epoch")
+    plt.ylabel("Accuracy")
+    plt.plot(logs["train_accs"], "b")
+    plt.plot(logs["val_accs"], "y")
+    plt.legend(["Train accuracy", "Validation accuracy"])
+
+    plt.figure()
+    plt.title("Pixel map")
+    plt.scatter(grid[:, 0], grid[:, 1], s=1, c=labels.ravel(), cmap="coolwarm")
+
+    plt.show()
 
 
 def main(
@@ -42,7 +108,6 @@ def main(
     batch_size,
     input_layers,
     hidden_layers,
-    hidden_size,
     output_layers,
     activation,
     criterion,
@@ -74,7 +139,7 @@ def main(
     # Create model, optimiser, and loss function
     model = ANN(
         input_layers,
-        np.array(hidden_size * np.ones(hidden_layers), dtype=np.int32),
+        hidden_layers,
         output_layers,
         activation,
     ).to(device)
@@ -85,6 +150,8 @@ def main(
     train_losses, train_accs = [], []
     val_losses, val_accs = [], []
 
+    # Train model
+    beginning = time.time()
     for epoch in range(num_epochs):
         # Reset gradients
         optimiser.zero_grad()
@@ -118,84 +185,40 @@ def main(
                     epoch, loss.item(), train_acc * 100, loss_val.item(), val_acc * 100
                 )
             )
+    end = time.time()
 
     torch.save(model.state_dict(), "spiral_model.pt")
 
-    print("\nTraining finished!\n")
+    print(
+        "\nTraining finished! Time elapsed: {:.4f} minutes\n".format(
+            (end - beginning) / 60.0
+        )
+    )
 
     # Print confusion matrix, accuracy, precision and recall
-    confusion_mat, acc, precision, recall = test(model, x_test, y_test)
+    metrics_map = test(model, x_test, y_test)
 
-    print(f"Confusion matrix: \n{confusion_mat}\n")
+    print("Confusion matrix: \n{}\n".format(metrics_map["conf_mat"]))
+    print(" Accuracy - {:.4f}".format(metrics_map["acc"]))
     print(
-        f"Accuracy: {acc*100:.4f}% \tPrecision: {precision:.4f} \tRecall: {recall:.4f}"
+        "Precision - Global: {:.4f} \t Mean: {:.4f}".format(
+            metrics_map["precision_global"], metrics_map["precision_mean"]
+        )
+    )
+    print(
+        "   Recall - Global: {:.4f} \t Mean: {:.4f}".format(
+            metrics_map["recall_global"], metrics_map["recall_mean"]
+        )
     )
 
-    # Plot training and validation history
-    plt.figure()
-    plt.title("Training vs Validation History")
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.plot(train_losses, "r")
-    plt.plot(val_losses, "g")
-    plt.legend(["Train loss", "Validation loss"])
-
-    plt.figure()
-    plt.title("Training vs Validation History")
-    plt.xlabel("Epoch")
-    plt.ylabel("Accuracy")
-    plt.plot(train_accs, "b")
-    plt.plot(val_accs, "y")
-    plt.legend(["Train accuracy", "Validation accuracy"])
-
-    plt.show()
-
-
-# Function for visualising model
-def visualize_spiral(model, extents, num_points):
-    # Generate your meshgrid
-    x_min, x_max, y_min, y_max = extents
-    x, y = np.meshgrid(
-        np.linspace(x_min, x_max, num_points), np.linspace(y_min, y_max, num_points)
-    )
-    grid = np.stack((x.ravel(), y.ravel()), axis=1)
-
-    # Generate your predictions
-    with torch.no_grad():
-        model.eval()
-        inputs = torch.tensor(grid, dtype=torch.float32)
-        predictions = model(inputs).numpy()
-        predictions = np.reshape(predictions, (num_points, num_points, 2))
-
-    predictions = np.stack(
-        (predictions[..., 0], predictions[..., 1], np.zeros(predictions[..., 0].shape)),
-        axis=-1,
-    )
-
-    labels = np.argmax(predictions[..., :2], axis=2)
-
-    plt.scatter(grid[:, 0], grid[:, 1], s=1, c=labels.ravel(), cmap="coolwarm")
-    plt.show()
-
-
-# from sklearn.metrics import confusion_matrix
-
-# # Compute final prediction for test set
-# with torch.no_grad():
-#     y_pred_probs_test = model(x_test).numpy()
-# # Convert prediction probabilities to classes with cutoff 0.5
-# y_pred_classes_test = np.argmax(y_pred_probs_test, axis=1)
-
-# confusion_matrix(y_test, y_pred_classes_test)
-
-# from sklearn.metrics import accuracy_score, precision_score, recall_score
-
-# # Compute the accuracy.
-# print("Accuracy = {:.2f}".format(accuracy_score(y_test, y_pred_classes_test)))
-# # Compute the precision
-# print("Precision = {:.2f}".format(precision_score(y_test, y_pred_classes_test)))
-# # Compute the recall (affected by class imbalance)
-# print("Recall = {:.2f}".format(recall_score(y_test, y_pred_classes_test)))
+    # Visualise results
+    logs = {
+        "train_loss": train_losses,
+        "val_loss": val_losses,
+        "train_accs": train_accs,
+        "val_accs": val_accs,
+    }
+    visualise_results(model, logs, extents=[-6, 6, -6, 6], num_points=1000)
 
 
 if __name__ == "__main__":
@@ -207,25 +230,9 @@ if __name__ == "__main__":
         "num_epochs": 1000,
         "batch_size": 10,
         "input_layers": 2,
-        "hidden_layers": 2,
-        "hidden_size": 8,
+        "hidden_layers": [140, 140],
         "output_layers": 2,
-        "activation": torch.nn.Tanh(),
+        "activation": torch.nn.ReLU(),
         "criterion": torch.nn.CrossEntropyLoss(),
     }
     main(**i_args)
-
-    # Visualise model if desired
-    visualise = True
-    if visualise:
-        model = ANN(
-            i_args["input_layers"],
-            np.array(
-                i_args["hidden_size"] * np.ones(i_args["hidden_layers"]), dtype=np.int32
-            ),
-            i_args["output_layers"],
-            i_args["activation"],
-        )
-        model.load_state_dict(torch.load("spiral_model.pt"))
-
-        visualize_spiral(model, extents=[-10, 10, -10, 10], num_points=1000)
