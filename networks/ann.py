@@ -13,6 +13,8 @@ class ANN(torch.nn.Module):
             self.layers.append(activation)
 
         self.layers.append(torch.nn.Linear(hidden_layers[-1], output_size))
+
+        # self.layers.append(torch.nn.Sigmoid())
         self.layers.append(torch.nn.Softmax(dim=1))
 
         self.network = torch.nn.Sequential(*self.layers)
