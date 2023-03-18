@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import time
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import (
@@ -98,14 +99,78 @@ def test(model, x_test, y_test):
 
     # Get accuracy, precision and recall
     acc = accuracy_score(y_test, y_pred_classes_test)
-    precision = precision_score(y_test, y_pred_classes_test)
-    recall = recall_score(y_test, y_pred_classes_test)
 
-    return confusion_mat, acc, precision, recall
+    precision_global = precision_score(y_test, y_pred_classes_test, average="micro")
+    precision_mean = precision_score(y_test, y_pred_classes_test, average="macro")
+
+    recall_global = recall_score(y_test, y_pred_classes_test, average="micro")
+    recall_mean = recall_score(y_test, y_pred_classes_test, average="macro")
+
+    out_map = {
+        "conf_mat": confusion_mat,
+        "acc": acc,
+        "precision_global": precision_global,
+        "precision_mean": precision_mean,
+        "recall_global": recall_global,
+        "recall_mean": recall_mean,
+    }
+
+    return out_map
+
+
+# Function for visualising model
+def visualise_results(model, logs, extents, num_points):
+    # Generate your meshgrid
+    x_min, x_max, y_min, y_max = extents
+    x, y = np.meshgrid(
+        np.linspace(x_min, x_max, num_points), np.linspace(y_min, y_max, num_points)
+    )
+
+    # Parse grid to input that the model can process
+    grid = np.stack((x.ravel(), y.ravel()), axis=1)
+
+    # Generate your predictions
+    with torch.no_grad():
+        # Make sure everything is on CPU
+        model = model.to("cpu")
+        model.eval()
+        inputs = torch.tensor(grid, dtype=torch.float32)
+        predictions = model(inputs).numpy()
+        predictions = np.reshape(predictions, (num_points, num_points, 2))
+
+    predictions = np.stack(
+        (predictions[..., 0], predictions[..., 1], np.zeros(predictions[..., 0].shape)),
+        axis=-1,
+    )
+
+    labels = np.argmax(predictions[..., :2], axis=2)
+
+    # Plot training and validation history
+    plt.figure()
+    plt.title("Training vs Validation History")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.plot(logs["train_loss"], "r")
+    plt.plot(logs["val_loss"], "g")
+    plt.legend(["Train loss", "Validation loss"])
+
+    plt.figure()
+    plt.title("Training vs Validation History")
+    plt.xlabel("Epoch")
+    plt.ylabel("Accuracy")
+    plt.plot(logs["train_accs"], "b")
+    plt.plot(logs["val_accs"], "y")
+    plt.legend(["Train accuracy", "Validation accuracy"])
+
+    plt.figure()
+    plt.title("Pixel map")
+    plt.scatter(grid[:, 0], grid[:, 1], s=1, c=labels.ravel(), cmap="coolwarm")
+    plt.show()
 
 
 def main(
     data_path,
+    extra_features,
     lr,
     num_epochs,
     batch_size,
@@ -120,7 +185,7 @@ def main(
     print(f"Using {device} device")
 
     # Create dataset
-    dataset = SpiralDataset(data_path)
+    dataset = SpiralDataset(data_path, extra_features)
 
     # Show dataset
     # plt.scatter(dataset.data[:, 0], dataset.data[:, 1])
@@ -158,6 +223,7 @@ def main(
     val_losses, val_accs = [], []
 
     # Train model
+    beginning = time.time()
     best_acc = 0
     for epoch in range(1, num_epochs + 1):
         train_loss, train_acc = train(model, train_loader, criterion, optimiser, device)
@@ -179,68 +245,40 @@ def main(
         if val_acc > best_acc:
             best_acc = val_acc
 
+    end = time.time()
+
     torch.save(model.state_dict(), "spiral_model.pt")
 
-    print("\nTraining finished!\n")
+    print(
+        "\nTraining finished! Time elapsed: {:.4f} minutes\n".format(
+            (end - beginning) / 60.0
+        )
+    )
 
     # Print confusion matrix, accuracy, precision and recall
-    confusion_mat, acc, precision, recall = test(
-        model, test_dataset[..., :2], test_dataset[..., 2]
-    )
+    metrics_map = test(model, test_dataset[..., :2], test_dataset[..., 2])
 
-    print(f"Confusion matrix: \n{confusion_mat}\n")
+    print("Confusion matrix: \n{}\n".format(metrics_map["conf_mat"]))
+    print(" Accuracy - {:.4f}".format(metrics_map["acc"]))
     print(
-        f"Accuracy: {acc*100:.4f}% \tPrecision: {precision:.4f} \tRecall: {recall:.4f}"
+        "Precision - Global: {:.4f} \t Mean: {:.4f}".format(
+            metrics_map["precision_global"], metrics_map["precision_mean"]
+        )
+    )
+    print(
+        "   Recall - Global: {:.4f} \t Mean: {:.4f}".format(
+            metrics_map["recall_global"], metrics_map["recall_mean"]
+        )
     )
 
-    # Plot training and validation history
-    plt.figure()
-    plt.title("Training vs Validation History")
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.plot(train_losses, "r")
-    plt.plot(val_losses, "g")
-    plt.legend(["Train loss", "Validation loss"])
-
-    plt.figure()
-    plt.title("Training vs Validation History")
-    plt.xlabel("Epoch")
-    plt.ylabel("Accuracy")
-    plt.plot(train_accs, "b")
-    plt.plot(val_accs, "y")
-    plt.legend(["Train accuracy", "Validation accuracy"])
-
-    plt.show()
-
-
-# Function for visualising model
-def visualize_spiral(model, extents, num_points):
-    # Generate your meshgrid
-    x_min, x_max, y_min, y_max = extents
-    x, y = np.meshgrid(
-        np.linspace(x_min, x_max, num_points), np.linspace(y_min, y_max, num_points)
-    )
-
-    # Parse grid to input that the model can process
-    grid = np.stack((x.ravel(), y.ravel()), axis=1)
-
-    # Generate your predictions
-    with torch.no_grad():
-        model.eval()
-        inputs = torch.tensor(grid, dtype=torch.float32)
-        predictions = model(inputs).numpy()
-        predictions = np.reshape(predictions, (num_points, num_points, 2))
-
-    predictions = np.stack(
-        (predictions[..., 0], predictions[..., 1], np.zeros(predictions[..., 0].shape)),
-        axis=-1,
-    )
-
-    labels = np.argmax(predictions[..., :2], axis=2)
-
-    plt.title("Pixel map")
-    plt.scatter(grid[:, 0], grid[:, 1], s=1, c=labels.ravel(), cmap="coolwarm")
-    plt.show()
+    # Visualise results
+    logs = {
+        "train_loss": train_losses,
+        "val_loss": val_losses,
+        "train_accs": train_accs,
+        "val_accs": val_accs,
+    }
+    visualise_results(model, logs, extents=[-6, 6, -6, 6], num_points=1000)
 
 
 if __name__ == "__main__":
@@ -248,26 +286,14 @@ if __name__ == "__main__":
     # Create input map and then unpack to call main
     i_args = {
         "data_path": "dataset/spiralsdataset.csv",
+        "extra_features": False,
         "lr": 0.01,
         "num_epochs": 1000,
-        "batch_size": 10,
+        "batch_size": 30,
         "input_layers": 2,
-        "hidden_layers": [69, 42],
+        "hidden_layers": [10, 10],
         "output_layers": 2,
         "activation": torch.nn.Tanh(),
         "criterion": torch.nn.CrossEntropyLoss(),
     }
     main(**i_args)
-
-    # Visualise model if desired
-    visualise = True
-    if visualise:
-        model = ANN(
-            i_args["input_layers"],
-            i_args["hidden_layers"],
-            i_args["output_layers"],
-            i_args["activation"],
-        )
-        model.load_state_dict(torch.load("spiral_model.pt"))
-
-        visualize_spiral(model, extents=[-10, 10, -10, 10], num_points=1000)
