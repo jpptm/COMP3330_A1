@@ -27,9 +27,10 @@ def test(model, x_test, y_test):
 
     # Convert prediction probabilities to classes with cutoff 0.5
     y_pred_classes_test = np.argmax(y_pred_probs_test, axis=1)
-    confusion_mat = confusion_matrix(y_test, y_pred_classes_test)
 
     # Get accuracy, precision and recall
+    confusion_mat = confusion_matrix(y_test, y_pred_classes_test)
+
     acc = accuracy_score(y_test, y_pred_classes_test)
 
     precision_global = precision_score(y_test, y_pred_classes_test, average="micro")
