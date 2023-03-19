@@ -219,6 +219,8 @@ def main(
         "train_accs": train_accs,
         "val_accs": val_accs,
     }
+
+    print("\nVisualising results...")
     visualise_results(model, logs, extents=[-6, 6, -6, 6], num_points=1000)
 
 

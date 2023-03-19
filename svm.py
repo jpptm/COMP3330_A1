@@ -71,7 +71,7 @@ def main():
 
     # Split into train and test sets
     x_train, x_test, y_train, y_test = train_test_split(
-        x, y, test_size=0.3, random_state=123
+        x, y, test_size=0.15, random_state=123, shuffle=True
     )
 
     # Create parameters
@@ -89,6 +89,7 @@ def main():
 
     out_map = test(grid, x_test, y_test)
 
+    print("\nBest parameters: {}".format(grid.best_params_))
     print("\nConfusion matrix: \n{}\n".format(out_map["conf_mat"]))
     print(" Accuracy - {:.4f}".format(out_map["acc"]))
     print(
@@ -103,6 +104,7 @@ def main():
     )
 
     # Visualise results
+    print("\nVisualising results...")
     visualise_results(grid, extents=[-6, 6, -6, 6], num_points=1000)
 
 
