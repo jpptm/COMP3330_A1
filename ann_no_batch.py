@@ -53,7 +53,7 @@ def test(model, x_test, y_test):
 
 # Function for visualising model
 def visualise_results(model, logs, extents, num_points):
-    # Generate your meshgrid
+    # Generate meshgrid
     x_min, x_max, y_min, y_max = extents
     x, y = np.meshgrid(
         np.linspace(x_min, x_max, num_points), np.linspace(y_min, y_max, num_points)
@@ -62,7 +62,7 @@ def visualise_results(model, logs, extents, num_points):
     # Parse grid to input that the model can process
     grid = np.stack((x.ravel(), y.ravel()), axis=1)
 
-    # Generate your predictions
+    # Generate predictions
     with torch.no_grad():
         # Make sure everything is on CPU
         model = model.to("cpu")

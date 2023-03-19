@@ -44,8 +44,8 @@ def test(model, x_test, y_test):
 
 
 # Function for visualising model
-def visualise_results(model, logs, extents, num_points):
-    # Generate your meshgrid
+def visualise_results(model, extents, num_points):
+    # Generate meshgrid
     x_min, x_max, y_min, y_max = extents
     x, y = np.meshgrid(
         np.linspace(x_min, x_max, num_points), np.linspace(y_min, y_max, num_points)
@@ -54,38 +54,12 @@ def visualise_results(model, logs, extents, num_points):
     # Parse grid to input that the model can process
     grid = np.stack((x.ravel(), y.ravel()), axis=1)
 
-    # Generate your predictions
-
+    # Generate predictions
     predictions = model.predict(grid)
-    predictions = np.reshape(predictions, (num_points, num_points, 2))
-
-    predictions = np.stack(
-        (predictions[..., 0], predictions[..., 1], np.zeros(predictions[..., 0].shape)),
-        axis=-1,
-    )
-
-    labels = np.argmax(predictions[..., :2], axis=2)
-
-    # Plot training and validation history
-    plt.figure()
-    plt.title("Training vs Validation History")
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.plot(logs["train_loss"], "r")
-    plt.plot(logs["val_loss"], "g")
-    plt.legend(["Train loss", "Validation loss"])
-
-    plt.figure()
-    plt.title("Training vs Validation History")
-    plt.xlabel("Epoch")
-    plt.ylabel("Accuracy")
-    plt.plot(logs["train_accs"], "b")
-    plt.plot(logs["val_accs"], "y")
-    plt.legend(["Train accuracy", "Validation accuracy"])
 
     plt.figure()
     plt.title("Pixel map")
-    plt.scatter(grid[:, 0], grid[:, 1], s=1, c=labels.ravel(), cmap="coolwarm")
+    plt.scatter(grid[:, 0], grid[:, 1], s=1, c=predictions, cmap="coolwarm")
 
     plt.show()
 
@@ -107,7 +81,7 @@ def main():
     param_grid = {
         "C": [0.1, 1, 10, 100, 1000],
         "gamma": [1, 0.1, 0.01, 0.001, 0.0001],
-        "kernel": ["rbf", "poly", "sigmoid"],
+        "kernel": ["rbf", "sigmoid"],
     }
 
     # Create grid search to find best parameters
@@ -116,13 +90,23 @@ def main():
     # Train model
     grid.fit(x_train, y_train)
 
-    # Get best parameters
-    print(grid.best_params_)
-
     out_map = test(grid, x_test, y_test)
-    # # Visualise results
-    # plt.scatter(x_test[:, 0], x_test[:, 1], c=grid_predictions)
-    # plt.show()
+
+    print("Confusion matrix: \n{}\n".format(out_map["conf_mat"]))
+    print(" Accuracy - {:.4f}".format(out_map["acc"]))
+    print(
+        "Precision - Global: {:.4f} \t Mean: {:.4f}".format(
+            out_map["precision_global"], out_map["precision_mean"]
+        )
+    )
+    print(
+        "   Recall - Global: {:.4f} \t Mean: {:.4f}".format(
+            out_map["recall_global"], out_map["recall_mean"]
+        )
+    )
+
+    # Visualise results
+    visualise_results(grid, extents=[-6, 6, -6, 6], num_points=1000)
 
 
 if __name__ == "__main__":
