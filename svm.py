@@ -71,11 +71,8 @@ def main():
 
     # Split into train and test sets
     x_train, x_test, y_train, y_test = train_test_split(
-        x, y, test_size=0.2, random_state=123
+        x, y, test_size=0.3, random_state=123
     )
-
-    # Create SVM model
-    model = SVC()
 
     # Create parameters
     param_grid = {
@@ -85,7 +82,7 @@ def main():
     }
 
     # Create grid search to find best parameters
-    grid = GridSearchCV(model, param_grid, refit=True, verbose=3)
+    grid = GridSearchCV(SVC(), param_grid, refit=True, verbose=3)
 
     # Train model
     grid.fit(x_train, y_train)
