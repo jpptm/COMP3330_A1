@@ -89,7 +89,7 @@ def main():
 
     out_map = test(grid, x_test, y_test)
 
-    print("Confusion matrix: \n{}\n".format(out_map["conf_mat"]))
+    print("\nConfusion matrix: \n{}\n".format(out_map["conf_mat"]))
     print(" Accuracy - {:.4f}".format(out_map["acc"]))
     print(
         "Precision - Global: {:.4f} \t Mean: {:.4f}".format(
