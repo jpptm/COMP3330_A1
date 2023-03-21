@@ -47,51 +47,45 @@ def test(model, x_test, y_test):
     return out_map
 
 
-# def plot_learning_curve(model, x, y, gamma, test_size):
-#     # Show learning curve / likelihood of overfitting
-#     plt.figure()
+# Visualise likelihood of overfitting or underfitting
+def plot_learning_curve(x_src, y_src, gamma_val):
+    model = SVC(gamma=gamma_val)
+    cv = ShuffleSplit(n_splits=10, test_size=0.2, random_state=0)
+    train_sizes, train_scores, test_scores = learning_curve(
+        model, x_src, y_src, cv=cv, train_sizes=np.linspace(0.1, 1.0, 5), n_jobs=1
+    )
 
-#     title = f"Learning Curve gamma = {gamma}"
-#     plt.title(title)
+    train_scores_mean = np.mean(train_scores, axis=1)
+    train_scores_std = np.std(train_scores, axis=1)
+    test_scores_mean = np.mean(test_scores, axis=1)
+    test_scores_std = np.std(test_scores, axis=1)
 
-#     plt.xlabel("Training examples")
-#     plt.ylabel("Score")
+    plt.figure()
+    plt.title(f"Learning curve for gamma={gamma_val}")
+    plt.xlabel("Training examples")
+    plt.ylabel("Score")
+    plt.grid()
+    plt.fill_between(
+        train_sizes,
+        train_scores_mean - train_scores_std,
+        train_scores_mean + train_scores_std,
+        alpha=0.1,
+        color="r",
+    )
+    plt.fill_between(
+        train_sizes,
+        test_scores_mean - test_scores_std,
+        test_scores_mean + test_scores_std,
+        alpha=0.1,
+        color="g",
+    )
+    plt.plot(train_sizes, train_scores_mean, "o-", color="r", label="Training score")
+    plt.plot(
+        train_sizes, test_scores_mean, "o-", color="g", label="Cross-validation score"
+    )
+    plt.legend(loc="best")
 
-#     train_sizes, train_scores, test_scores = learning_curve(
-#         model,
-#         x,
-#         y,
-#         cv=ShuffleSplit(n_splits=10, test_size=test_size, random_state=123),
-#         n_jobs=4,
-#         train_sizes=np.linspace(0.1, 1.0, 5),
-#     )
-#     train_scores_mean = np.mean(train_scores, axis=1)
-#     train_scores_std = np.std(train_scores, axis=1)
-#     test_scores_mean = np.mean(test_scores, axis=1)
-#     test_scores_std = np.std(test_scores, axis=1)
-
-#     plt.grid()
-#     plt.fill_between(
-#         train_sizes,
-#         train_scores_mean - train_scores_std,
-#         train_scores_mean + train_scores_std,
-#         alpha=0.1,
-#         color="r",
-#     )
-#     plt.fill_between(
-#         train_sizes,
-#         test_scores_mean - test_scores_std,
-#         test_scores_mean + test_scores_std,
-#         alpha=0.1,
-#         color="g",
-#     )
-
-#     plt.plot(train_sizes, train_scores_mean, "o-", color="r", label="Training score")
-#     plt.plot(
-#         train_sizes, test_scores_mean, "o-", color="g", label="Cross-validation score"
-#     )
-
-#     plt.legend(loc="best")
+    return plt
 
 
 # Function for visualising model
@@ -161,7 +155,8 @@ def visualise_results(
     plt.ylim([-0.05, 1.05])
     plt.legend(loc="lower right")
 
-    # plot_learning_curve(model, x_src, y_src, gamma, test_size)
+    # Plot the learning curve
+    plot_learning_curve(x_src, y_src, gamma)
 
     plt.show()
 
@@ -172,7 +167,8 @@ def main(C, gamma, test_size, auto_grid=False):
     x, y = spiral_ds.x, spiral_ds.y
 
     # Show dataset
-    # plt.scatter(x[:, 0], x[:, 1], c=y)
+    plt.figure()
+    plt.scatter(x[:, 0], x[:, 1], c=["red" if i == 0 else "blue" for i in y])
     # plt.show()
 
     # Split into train and test sets
@@ -236,4 +232,4 @@ def main(C, gamma, test_size, auto_grid=False):
 
 
 if __name__ == "__main__":
-    main(C=10, gamma=1, test_size=0.2, auto_grid=False)
+    main(C=10, gamma=0.9, test_size=0.2, auto_grid=False)
