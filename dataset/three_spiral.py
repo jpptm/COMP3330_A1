@@ -39,4 +39,7 @@ def spiral(alpha=0.8, noise_scale=0.1, num_points=1000, show=False):
         plt.scatter(data[:, 0], data[:, 1], c=data[:, 2])
         plt.show()
 
-    return data
+    features = data[:, :2]
+    labels = data[:, 2]
+
+    return features, labels
