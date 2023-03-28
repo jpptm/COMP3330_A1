@@ -1,45 +1,64 @@
 import numpy as np
+from numpy import pi
 import matplotlib.pyplot as plt
+
+import torch
+from torch.utils.data import Dataset
 
 # Functionality derived from
 # Constructing neural networks for multiclass-discretization based on information entropy
 # July 1999IEEE transactions on systems, man, and cybernetics. Part B, Cybernetics:
 # a publication of the IEEE Systems, Man, and Cybernetics Society 29(3):445 - 453, page 451
-# This function could be generalised to K spirals by letting theta = 2kpi / K where k = K - 1
+# and https://atcold.github.io/pytorch-Deep-Learning/en/week02/02-3/
 
 
-def spiral(alpha=0.8, noise_scale=0.1, num_points=1000, show=False):
+class NSpiralDataset(Dataset):
+    def __init__(
+        self, alpha=6, noise_scale=0.01, num_points=50, n_spirals=3, show=False
+    ):  # NB: the length of the dataset will be num_points * n_spirals
 
-    # Use a function so that different noise values are used for every call
-    def noise():
-        return noise_scale * np.random.normal(size=num_points)
+        self.data = self.spiral(
+            alpha=alpha,
+            noise_scale=noise_scale,
+            num_points=num_points,
+            n_spirals=n_spirals,
+            show=show,
+        )
 
-    # Generate data and labels
-    theta = np.linspace(0, 4 * np.pi, num_points)
-    rho = alpha * theta
+        self.x = torch.tensor(self.data[:, :2], dtype=torch.float32)
+        self.y = torch.tensor(self.data[:, 2], dtype=torch.int64)
 
-    x1 = rho * np.cos(theta) + noise()
-    y1 = rho * np.sin(theta) + noise()
-    l1 = np.zeros(num_points)
-    d1 = np.stack((x1, y1, l1), axis=-1)
+    def spiral(self, alpha, noise_scale, num_points, n_spirals, show):
 
-    x2 = rho * np.cos(theta + np.pi) + noise()
-    y2 = rho * np.sin(theta + np.pi) + noise()
-    l2 = np.ones(num_points)
-    d2 = np.stack((x2, y2, l2), axis=-1)
+        # Use a function so that different noise values are used for every call
+        def noise():
+            return noise_scale * np.random.normal(size=num_points)
 
-    x3 = rho * np.cos(theta + 2 * np.pi / 3) + noise()
-    y3 = rho * np.sin(theta + 2 * np.pi / 3) + noise()
-    l3 = np.ones(num_points) * 2
-    d3 = np.stack((x3, y3, l3), axis=-1)
+        # Generate data and labels
+        theta = np.linspace(0, 1, num_points)
+        rho = alpha * theta
 
-    data = np.concatenate((d1, d2, d3), axis=0)
+        data = []
 
-    if show:
-        plt.scatter(data[:, 0], data[:, 1], c=data[:, 2])
-        plt.show()
+        for k in range(1, n_spirals + 1):
+            x = rho * np.cos((2 * pi / n_spirals) * (2 * theta + k - 1 + noise()))
+            y = rho * np.sin((2 * pi / n_spirals) * (2 * theta + k - 1 + noise()))
+            label = (k - 1) * np.ones(num_points)
+            d = np.stack((x, y, label), axis=-1)
+            data.append(d)
 
-    features = data[:, :2]
-    labels = data[:, 2]
+        data = np.array(data).reshape(-1, 3)
 
-    return features, labels
+        cmap = {0: "red", 1: "blue", 2: "green"}
+        colors = [cmap[i] for i in data[:, 2]]
+        if show:
+            plt.scatter(data[:, 0], data[:, 1], c=colors)
+            plt.show()
+
+        return data
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        return self.x[idx], self.y[idx]
