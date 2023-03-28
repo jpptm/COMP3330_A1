@@ -17,6 +17,8 @@ from sklearn.metrics import (
 )
 
 from dataset.spiral_ds_loader import SpiralDataset
+from dataset.three_spiral import NSpiralDataset
+
 
 # Compute final prediction for test set
 def test(model, x_test, y_test):
@@ -52,7 +54,7 @@ def plot_learning_curve(x_src, y_src, gamma_val):
     model = SVC(gamma=gamma_val)
     cv = ShuffleSplit(n_splits=10, test_size=0.2, random_state=0)
     train_sizes, train_scores, test_scores = learning_curve(
-        model, x_src, y_src, cv=cv, train_sizes=np.linspace(0.1, 1.0, 5), n_jobs=1
+        model, x_src, y_src, cv=cv, train_sizes=np.linspace(0.1, 1.0, 5), n_jobs=4
     )
 
     train_scores_mean = np.mean(train_scores, axis=1)
@@ -112,10 +114,12 @@ def visualise_results(
 
     # Generate predictions
     predictions = model.predict(grid)
+    cmap = {0: "red", 1: "blue", 2: "green"}
+    colors = [cmap[i] for i in predictions]
 
     plt.figure()
     plt.title("Pixel map")
-    plt.scatter(grid[:, 0], grid[:, 1], s=1, c=predictions, cmap="coolwarm")
+    plt.scatter(grid[:, 0], grid[:, 1], s=1, c=colors, cmap="coolwarm")
 
     # Predict probabilities for the test set
     probas = model.predict_proba(x_test)
@@ -132,7 +136,7 @@ def visualise_results(
 
     # Plot the ROC curves for each class
     plt.figure()
-    for i, color in zip(range(len(np.unique(y_test))), colors):
+    for i, color in zip(range(len(np.unique(y_test))), ["red", "blue", "green"]):
         plt.plot(
             results["fpr"][i],
             results["tpr"][i],
@@ -163,12 +167,16 @@ def visualise_results(
 
 def main(C, gamma, test_size, auto_grid=False):
     # Load dataset
-    spiral_ds = SpiralDataset("dataset/spiralsdataset.csv")
+    # spiral_ds = SpiralDataset("dataset/spiralsdataset.csv")
+    spiral_ds = NSpiralDataset()
     x, y = spiral_ds.x, spiral_ds.y
+    print(len(x))
 
     # Show dataset
     plt.figure()
-    plt.scatter(x[:, 0], x[:, 1], c=["red" if i == 0 else "blue" for i in y])
+    cmap = {0: "red", 1: "blue", 2: "green"}
+    colors = [cmap[i] for i in y.numpy()]
+    plt.scatter(x[:, 0], x[:, 1], c=colors)
     # plt.show()
 
     # Split into train and test sets
@@ -215,9 +223,9 @@ def main(C, gamma, test_size, auto_grid=False):
     print("\nVisualising results...")
     input_map = {
         "model": grid,
-        "gamma": gamma,
+        "gamma": grid.best_params_["gamma"] if auto_grid else gamma,
         "extents": [-6, 6, -6, 6],
-        "num_points": 500,
+        "num_points": 1000,
         "x_src": x,
         "y_src": y,
         "test_size": test_size,
@@ -232,4 +240,4 @@ def main(C, gamma, test_size, auto_grid=False):
 
 
 if __name__ == "__main__":
-    main(C=10, gamma=0.9, test_size=0.2, auto_grid=False)
+    main(C=10, gamma=0.9, test_size=0.3, auto_grid=True)
