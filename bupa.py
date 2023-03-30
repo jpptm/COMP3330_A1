@@ -77,8 +77,8 @@ class BUPA:
 
         # The most optimal cut-off value is the first element of the sorted list
         min_diff = sorted(min_diff, key=lambda x: x[1])
-        # cut_off = min_diff[0][0]
-        cut_off = 3
+        cut_off = min_diff[0][0]
+
         labels = [0 if i <= cut_off else 1 for i in self.new_data[:, 5]]
 
         self.features = self.new_data[:, :5]
