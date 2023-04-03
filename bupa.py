@@ -96,7 +96,8 @@ class BUPA:
         return self.features[idx], self.labels[idx]
 
 
-# https://github.com/christianversloot/machine-learning-articles/blob/main/how-to-use-k-fold-cross-validation-with-pytorch.md
+# Code template taken from https://github.com/christianversloot/machine-learning-articles/blob/main/how-to-use-k-fold-cross-validation-with-pytorch.md
+# Modified accordingly
 class ANNBUPA:
     def __init__(self, dataset, normalise=False):
         # The line below should be equal to self.bulk from the bupa dataset
@@ -149,65 +150,6 @@ class ANNBUPA:
 
         testing_losses = []
         testing_accuracies = []
-
-        # accuracy_scores = cross_val_score(
-        #     self.model, self.features, self.labels, cv=10, scoring="accuracy"
-        # )
-        # precision_macro_scores = cross_val_score(
-        #     self.model, self.features, self.labels, cv=10, scoring="precision_macro"
-        # )
-
-        # precision_micro_scores = cross_val_score(
-        #     self.model, self.features, self.labels, cv=10, scoring="precision_micro"
-        # )
-
-        # recall_macro_scores = cross_val_score(
-        #     self.model, self.features, self.labels, cv=10, scoring="recall_macro"
-        # )
-        # recall_micro_scores = cross_val_score(
-        #     self.model, self.features, self.labels, cv=10, scoring="recall_micro"
-        # )
-
-        # print("Individual scores per fold:")
-
-        # for fold, scores in enumerate(
-        #     zip(
-        #         accuracy_scores,
-        #         precision_macro_scores,
-        #         precision_micro_scores,
-        #         recall_macro_scores,
-        #         recall_micro_scores,
-        #     ),
-        #     start=1,
-        # ):
-        #     print(
-        #         fold,
-        #         """Accuracy: %0.2f,
-        #         Precision (macro): %0.2f, Precision (micro): %0.2f,
-        #            Recall (macro): %0.2f,    Recall (micro): %0.2f"""
-        #         % scores,
-        #     )
-
-        # print(
-        #     "\nAverage accuracy of %0.2f with a standard deviation of %0.2f"
-        #     % (accuracy_scores.mean(), accuracy_scores.std())
-        # )
-        # print(
-        #     "\nAverage precision macro of %0.2f with a standard deviation of %0.2f"
-        #     % (precision_macro_scores.mean(), precision_macro_scores.std())
-        # )
-        # print(
-        #     "\nAverage precision micro of %0.2f with a standard deviation of %0.2f"
-        #     % (precision_micro_scores.mean(), precision_micro_scores.std())
-        # )
-        # print(
-        #     "\nAverage recall macro of %0.2f with a standard deviation of %0.2f"
-        #     % (recall_macro_scores.mean(), recall_macro_scores.std())
-        # )
-        # print(
-        #     "\nAverage recall micro of %0.2f with a standard deviation of %0.2f"
-        #     % (recall_micro_scores.mean(), recall_micro_scores.std())
-        # )
 
         # K-fold Cross Validation model evaluation
         for fold, (train_ids, test_ids) in enumerate(kfold.split(self.dataset)):
@@ -364,7 +306,7 @@ class SVMBUPA:
         self.labels = dataset[..., 5]
 
         self.x_train, self.x_test, self.y_train, self.y_test = train_test_split(
-            self.features, self.labels, test_size=0.3, shuffle=True
+            self.features, self.labels, test_size=0.30, shuffle=True
         )
 
         model = SVC(kernel="linear", C=1, gamma=0.0, random_state=42)
@@ -383,21 +325,21 @@ class SVMBUPA:
             )
 
         accuracy_scores = cross_val_score(
-            model, self.features, self.labels, cv=10, scoring="accuracy"
+            model, self.x_test, self.y_test, cv=10, scoring="accuracy"
         )
         precision_macro_scores = cross_val_score(
-            model, self.features, self.labels, cv=10, scoring="precision_macro"
+            model, self.x_test, self.y_test, cv=10, scoring="precision_macro"
         )
 
         precision_micro_scores = cross_val_score(
-            model, self.features, self.labels, cv=10, scoring="precision_micro"
+            model, self.x_test, self.y_test, cv=10, scoring="precision_micro"
         )
 
         recall_macro_scores = cross_val_score(
-            model, self.features, self.labels, cv=10, scoring="recall_macro"
+            model, self.x_test, self.y_test, cv=10, scoring="recall_macro"
         )
         recall_micro_scores = cross_val_score(
-            model, self.features, self.labels, cv=10, scoring="recall_micro"
+            model, self.x_test, self.y_test, cv=10, scoring="recall_micro"
         )
 
         print("Individual scores per fold:")
@@ -448,5 +390,5 @@ class SVMBUPA:
 
 if __name__ == "__main__":
     bupa_dataset = BUPA()
-    # bupa_svm = SVMBUPA(bupa_dataset.bulk, auto_grid=True, normalise=False)
-    bupa_ann = ANNBUPA(bupa_dataset.bulk, normalise=True)
+    bupa_svm = SVMBUPA(bupa_dataset.bulk, auto_grid=False, normalise=False)
+    # bupa_ann = ANNBUPA(bupa_dataset.bulk, normalise=True)
