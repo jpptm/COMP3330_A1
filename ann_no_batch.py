@@ -13,9 +13,10 @@ from sklearn.metrics import (
 
 
 from dataset.spiral_ds_loader import SpiralDataset
+from dataset.three_spiral import NSpiralDataset
 from networks.ann import ANN
 
-
+# This script is mainly a control script for debugging
 # This script is here to mainly show what happens to the loss and accuracy plots when we only iterate through the training set once
 # instead of training by mini batches
 # Compute final prediction for test set
@@ -69,14 +70,14 @@ def visualise_results(model, logs, extents, num_points):
         model.eval()
         inputs = torch.tensor(grid, dtype=torch.float32)
         predictions = model(inputs).numpy()
-        predictions = np.reshape(predictions, (num_points, num_points, 2))
+        predictions = np.argmax(predictions, axis=-1)
 
-    predictions = np.stack(
-        (predictions[..., 0], predictions[..., 1], np.zeros(predictions[..., 0].shape)),
-        axis=-1,
-    )
+    # predictions = np.stack(
+    #     (predictions[..., 0], predictions[..., 1], np.zeros(predictions[..., 0].shape)),
+    #     axis=-1,
+    # )
 
-    labels = np.argmax(predictions[..., :2], axis=2)
+    # labels = np.argmax(predictions[..., :2], axis=2)
 
     # Plot training and validation history
     plt.figure()
@@ -97,7 +98,9 @@ def visualise_results(model, logs, extents, num_points):
 
     plt.figure()
     plt.title("Pixel map")
-    plt.scatter(grid[:, 0], grid[:, 1], s=1, c=labels.ravel(), cmap="coolwarm")
+    cmap = {0: "red", 1: "blue", 2: "green"}
+    colors = [cmap[i] for i in predictions]
+    plt.scatter(grid[:, 0], grid[:, 1], s=1, c=colors, cmap="coolwarm")
 
     plt.show()
 
@@ -119,7 +122,8 @@ def main(
     print(f"Using {device} device")
 
     # Create dataset
-    dataset = SpiralDataset(data_path)
+    # dataset = SpiralDataset(data_path)
+    dataset = NSpiralDataset()
     x = dataset.x
     y = dataset.y
 
@@ -196,6 +200,8 @@ def main(
         )
     )
 
+    print("\nEvaluating model on the test set...")
+
     # Print confusion matrix, accuracy, precision and recall
     metrics_map = test(model, x_test, y_test)
 
@@ -233,8 +239,8 @@ if __name__ == "__main__":
         "num_epochs": 1000,
         "batch_size": 10,
         "input_layers": 2,
-        "hidden_layers": [140, 140],
-        "output_layers": 2,
+        "hidden_layers": [140, 70],
+        "output_layers": 3,
         "activation": torch.nn.ReLU(),
         "criterion": torch.nn.CrossEntropyLoss(),
     }
