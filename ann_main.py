@@ -13,8 +13,13 @@ from sklearn.metrics import (
 
 from torch.utils.data import DataLoader
 
+from dataset.three_spiral import NSpiralDataset
 from dataset.spiral_ds_loader import SpiralDataset
 from networks.ann import ANN
+
+import os
+
+os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
 # Add training function
 def train(model, train_loader, criterion, optimiser, device):
@@ -133,14 +138,11 @@ def visualise_results(model, logs, extents, num_points):
         model.eval()
         inputs = torch.tensor(grid, dtype=torch.float32)
         predictions = model(inputs).numpy()
-        predictions = np.reshape(predictions, (num_points, num_points, 2))
+        # predictions = np.reshape(predictions, (num_points, num_points, 2))
+        predictions = np.argmax(predictions, axis=-1)
 
-    predictions = np.stack(
-        (predictions[..., 0], predictions[..., 1], np.zeros(predictions[..., 0].shape)),
-        axis=-1,
-    )
-
-    labels = np.argmax(predictions[..., :2], axis=2)
+    cmap = {0: "red", 1: "blue", 2: "green"}
+    colors = [cmap[i] for i in predictions]
 
     # Plot training and validation history
     plt.figure()
@@ -161,7 +163,7 @@ def visualise_results(model, logs, extents, num_points):
 
     plt.figure()
     plt.title("Pixel map")
-    plt.scatter(grid[:, 0], grid[:, 1], s=1, c=labels.ravel(), cmap="coolwarm")
+    plt.scatter(grid[:, 0], grid[:, 1], s=1, c=colors, cmap="coolwarm")
     plt.show()
 
 
@@ -182,10 +184,14 @@ def main(
     print(f"Using {device} device")
 
     # Create dataset
-    dataset = SpiralDataset(data_path, extra_features)
+    # dataset = SpiralDataset(data_path, extra_features)
+    dataset = NSpiralDataset()
 
     # Show dataset
-    # plt.scatter(dataset.data[:, 0], dataset.data[:, 1])
+    plt.title("Spiral Dataset")
+    cmap = {0: "red", 1: "blue", 2: "green"}
+    colors = [cmap[x] for x in dataset.y.numpy()]
+    plt.scatter(dataset.x[:, 0], dataset.x[:, 1], c=colors, cmap="coolwarm")
     # plt.show()
 
     # Split dataset into train, validation, and test sets
@@ -252,6 +258,8 @@ def main(
         )
     )
 
+    print("\nEvaluating model on the test set...")
+
     # Print confusion matrix, accuracy, precision and recall
     metrics_map = test(model, test_dataset[..., :2], test_dataset[..., 2])
 
@@ -286,13 +294,13 @@ if __name__ == "__main__":
     i_args = {
         "data_path": "dataset/spiralsdataset.csv",
         "extra_features": False,
-        "lr": 0.01,
-        "num_epochs": 1000,
-        "batch_size": 30,
+        "lr": 0.001,
+        "num_epochs": 500,
+        "batch_size": 10,
         "input_layers": 2,
-        "hidden_layers": [10, 10],
-        "output_layers": 2,
-        "activation": torch.nn.Tanh(),
+        "hidden_layers": [150, 150, 150],
+        "output_layers": 3,
+        "activation": torch.nn.ReLU(),
         "criterion": torch.nn.CrossEntropyLoss(),
     }
     main(**i_args)
