@@ -14,9 +14,9 @@ class SpiralDataset(Dataset):
             # Features to add: radius, theta, x1x2,
             r = torch.linalg.norm(self.x, dim=-1)
             theta = torch.atan2(self.x[:, 1], self.x[:, 0])
-            x1x2 = self.x[:, 0] * self.x[:, 1]
+            # x1x2 = self.x[:, 0] * self.x[:, 1]
 
-            self.x = torch.stack([self.x[:, 0], self.x[:, 1], r, theta, x1x2], dim=-1)
+            self.x = torch.stack([self.x[:, 0], self.x[:, 1], r, theta], dim=-1)
 
     def __len__(self):
         return len(self.data)
