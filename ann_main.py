@@ -131,6 +131,11 @@ def visualise_results(model, logs, extents, num_points):
     # Parse grid to input that the model can process
     grid = np.stack((x.ravel(), y.ravel()), axis=1)
 
+    # If extra features is true uncomment the lines below
+    # norm_grid = np.linalg.norm(grid, axis=-1)
+    # theta_grid = np.arctan2(grid[..., 1], grid[..., 0])
+    # new_grid = np.stack((grid[..., 0], grid[..., 1], norm_grid, theta_grid), axis=-1)
+
     # Generate predictions
     with torch.no_grad():
         # Make sure everything is on CPU
@@ -184,8 +189,8 @@ def main(
     print(f"Using {device} device")
 
     # Create dataset
-    # dataset = SpiralDataset(data_path, extra_features)
-    dataset = NSpiralDataset()
+    dataset = SpiralDataset(data_path, extra_features=extra_features)
+    # dataset = NSpiralDataset()
 
     # Show dataset
     plt.title("Spiral Dataset")
@@ -206,6 +211,13 @@ def main(
     test_dataset = torch.tensor(
         [[x[0], x[1], _] for x, _ in test_dataset], dtype=torch.float32, device=device
     )
+
+    # If extra features is true use this instead
+    # test_dataset = torch.tensor(
+    #     [[x[0], x[1], x[2], x[3], _] for x, _ in test_dataset],
+    #     dtype=torch.float32,
+    #     device=device,
+    # )
 
     # Create data loaders
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
@@ -261,6 +273,8 @@ def main(
     print("\nEvaluating model on the test set...")
 
     # Print confusion matrix, accuracy, precision and recall
+    # If extra features is true uncomment the line below
+    # metrics_map = test(model, test_dataset[..., :4], test_dataset[..., 4])
     metrics_map = test(model, test_dataset[..., :2], test_dataset[..., 2])
 
     print("Confusion matrix: \n{}\n".format(metrics_map["conf_mat"]))
@@ -295,11 +309,11 @@ if __name__ == "__main__":
         "data_path": "dataset/spiralsdataset.csv",
         "extra_features": False,
         "lr": 0.001,
-        "num_epochs": 500,
-        "batch_size": 10,
+        "num_epochs": 1000,
+        "batch_size": 16,
         "input_layers": 2,
-        "hidden_layers": [150, 150, 150],
-        "output_layers": 3,
+        "hidden_layers": [20, 20, 20],
+        "output_layers": 2,
         "activation": torch.nn.ReLU(),
         "criterion": torch.nn.CrossEntropyLoss(),
     }
