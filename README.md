@@ -13,3 +13,6 @@ lc.py is a debugging script for learning curves.
 All dataset parsers can be found in dataset
 
 bupa.py contains all the code for the second question.
+
+When running the scripts, please make sure to be in the same working directory as the repository.
+It is recommended to open the repository using VS code to do this automatically. Thank you very much!
